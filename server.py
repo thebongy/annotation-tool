@@ -4,7 +4,6 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    print(url_for('static',filename='css/bootstrap.min.css'))
     return render_template("index.html")
 
 if __name__ == '__main__':
