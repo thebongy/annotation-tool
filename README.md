@@ -1,1 +1,1 @@
-"# annotation-tool" 
+# annotation-tool
