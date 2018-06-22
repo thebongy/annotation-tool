@@ -1,0 +1,50 @@
+html, body {
+  height: 100%;
+}
+
+#navbar {
+  z-index:200;
+}
+
+#video-buttons {
+  margin: 0 auto;
+}
+
+.tools li {
+  padding:2px;
+  font-size:35px;
+}
+
+.main-frame {
+  margin-bottom:10px;
+}
+
+.main-frame img {
+  width:100%;
+  max-height:600px;
+}
+/*
+ * Sidebar
+ */
+
+.sidebar {
+  position: fixed;
+  color: #FFF;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width:80px;
+  z-index: -1; /* Behind the navbar */
+  padding: 48px 0 0; /* Height of navbar */
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.sidebar-sticky {
+  position: relative;
+  top: 0;
+  height: 100%;
+  text-align: center;
+  padding-top: .5rem;
+  overflow-x: hidden;
+  overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
+}
