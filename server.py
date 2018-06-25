@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, g, redirect, jsonify, send_from_directory
+from flask import Flask, render_template, request, g, redirect, jsonify, send_from_directory, send_file
 import json
 import sqlite3
 
@@ -65,7 +65,8 @@ def deleteFile(fileID):
 
 @app.route("/data/<fileID>")
 def getFile(fileID):
-    return send_from_directory("./data", fileID)
+    print("Sending")
+    return send_file("./data/%s" % fileID, conditional=True)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)

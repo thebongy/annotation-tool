@@ -10,14 +10,13 @@ function CanvasHandler(canvasElem, imageView, videoView) {
     this.imageView = imageView;
     this.videoView = videoView;
     this.ctx = this.canvas[0].getContext("2d");
-
-    this.loadFile = function (type, width, height)  {
-        this.type=  type;
-        this.canvas[0].width = width;
-        this.canvas[0].height = height;
+    
+    this.videoSeeked = false;
+    this.loadFile = function (type)  {
+        this.type = type;
         this.imageView.hide();
         this.videoView.hide();
-        console.log(this.type);
+        
         if (this.type == "video") {
             this.pauseVideo();
             this.videoView.show();
@@ -53,14 +52,20 @@ function CanvasHandler(canvasElem, imageView, videoView) {
     }
     this.videoNextFrame = function () {
       if (this.type == "video") {
-        console.log("NEXT");
-        this.videoView[0].currentTime += (1/30.0);
+        this.video.seekForward();
       }
     }
     
     this.videoPreviousFrame = function () {
       if (this.type == "video") {
-        this.video.seekBackward(1);
+        this.video.seekBackward();
+      }
+    }
+    
+    this.seekVideo = function (percentage) {
+      if (this.type == "video") {
+        console.log(this.videoView[0].duration * (percentage/100));
+        this.videoView[0].currentTime = this.videoView[0].duration * (percentage/100);
       }
     }
     
@@ -75,11 +80,13 @@ $(function() {
   
     const videoFrameBack = $("#videoFrameBackBtn");
     const videoFrameForward = $("#videoFrameForwardBtn");
-    console.log(videoFrameForward);
+    const videoSeek = $("#videoSeek");
+    
+    const frameCount = $("#frameCount");
+    
     const canvasObj = new CanvasHandler(mainCanvas, imageView, videoView);
     
     videoControls.on("click", "#videoPlayPauseBtn", function () {
-      console.log("ran");
       if (canvasObj.playPauseVideo()) {
         if (canvasObj.videoPaused) {
           $("#videoPlayPauseBtn").removeClass("fa-pause").addClass("fa-play");
@@ -97,17 +104,13 @@ $(function() {
       canvasObj.videoNextFrame();
     })
     
+    videoSeek.change(function() {
+      canvasObj.seekVideo(this.value);
+    })
+    
     videoView.on("timeupdate", function() {
-      console.log(canvasObj.video.toSeconds())
-    })
-    
-    videoFrameForward.click(function() {
-      console.log("F");
-      canvasObj.videoNextFrame();
-    })
-    
-    videoFrameBack.click(function() {
-      canvasObj.videoPreviousFrame();
+      frameCount.text(canvasObj.video.get());
+      videoSeek[0].value = 0;
     })
 
     mainCanvas.hide();
@@ -119,7 +122,7 @@ $(function() {
     });
 
     videoView.on("loadeddata", function() {
-        canvasObj.loadFile("video", this.width, this.height);
+        canvasObj.loadFile("video", this.videoWidth, this.videoHeight);
     })
     
     const navFileName = $("#nav-filename");
@@ -127,7 +130,7 @@ $(function() {
     fileList.on("click", ".file-list-name", function (event) {
         const listItem = $(this).parent();
         const fileType = listItem.attr("data-type");
-        const dataSrc = `/data/${listItem.attr("data-id")}`
+        const dataSrc = `/data/${listItem.attr("data-id")}`;
         if (fileType == "image") {
             imageView.attr("src", dataSrc);
         } else {
