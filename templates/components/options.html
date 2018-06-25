@@ -1,20 +1,43 @@
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-  <h1 class="h2">Objects</h1>
-  <hr>
-</div>
-
-<div class="card text-white bg-primary mb-3" style="max-width: 18rem;">
-  <div class="card-body">
-    <h5 class="card-title">Car #1</h5>
-  </div>
-</div>
-<div class="card text-white bg-secondary mb-3" style="max-width: 18rem;">
-  <div class="card-body">
-    <h5 class="card-title">Bike #1</h5>
-  </div>
-</div>
-<div class="card text-white bg-danger mb-3" style="max-width: 18rem;">
-  <div class="card-body">
-    <h5 class="card-title">Car #2</h5>
+<div id="options-window" class="container">
+  <div class="card">
+    <div class="card-header">
+      <ul class="nav nav-tabs card-header-tabs">
+        <li class="nav-item">
+          <a class="nav-link" data-toggle="tab" href="#objects" role="tab">Objects</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link active" data-toggle="tab" href="#files" role="tab">Files</a>
+        </li>
+      </ul>
+    </div>
+    <div class="card-body">
+      <div class="tab-content">
+        <div class="tab-pane" id="objects" role="tabpanel">
+          Objects
+        </div>
+        <div class="tab-pane active" id="files" role="tabpanel">
+            <ul class="file-list list-group list-group-flush mb-5">
+              {% for file in project.files %}
+              <li data-original="{{ file.original }}" data-ID="{{ file.id }}" data-type="{{ file.type }}" class="file-list-item list-group-item">
+              <span class="file-list-name">
+                {% if file.type == 'image' %}
+                  <i class="hover-icon far fa-image"></i>
+                {% elif file.type == 'video' %}
+                  <i class="hover-icon fas fa-video"></i>
+                {% endif %}
+              {{ file.original }}
+              </span>
+              <i data-ID="{{ file.id }}" class="hover-icon list-del-icon far fa-trash-alt"></i>
+              </li>
+              {% endfor %}
+            </ul>
+            <form id="uploadFileForm" action="/project/{{ project.id }}/upload">
+              <label class="btn btn-success">
+              Add file <input name="file" id="addFileBtn" type="file" hidden>
+              </label>
+            </form>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

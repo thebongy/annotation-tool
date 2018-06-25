@@ -1,13 +1,18 @@
 <nav class="navbar navbar-expand-md navbar-dark bg-dark" id="navbar">
-      <a class="navbar-brand" href="#">Annotation Tool</a>
-      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-      <div class="collapse navbar-collapse" id="navbarCollapse">
-        <ul class="navbar-nav mr-auto">
-          <li class="nav-item active">
-            <a class="nav-link" href="#">Home</a>
-          </li>
-        </ul>
-      </div>
+  <div class="navbar-collapse collapse w-100 order-1 order-md-0 dual-collapse2">
+    <a href="/" class="navbar-brand">Annotation Tool</a>
+    </div>
+    <div class="mx-auto order-0">
+        {% if page == "annotate" %}
+        <h5 id="nav-filename">No file loaded</h5>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".dual-collapse2">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        {% endif %}
+    </div>
+    <div class="navbar-collapse collapse w-100 order-3 dual-collapse2">
+        {% if page == "annotate" %}
+        <h5 class="ml-auto">Project: {{ project.name }}</h4>
+        {% endif %}
+    </div>
 </nav>
