@@ -1,7 +1,13 @@
 <div class="bg-dark noselect" id="video-controls">
-        <i id="videoFrameBackBtn" class="fas fa-backward v-control-icon hover-icon"></i>
-        <i id="videoPlayPauseBtn" class="fas fa-play v-control-icon hover-icon"></i>
-        <i id="videoFrameForwardBtn" class="fas fa-forward v-control-icon hover-icon"></i>
-        <span class="badge badge-primary" id="frameCount"></span>
-        <input id="videoSeek" type="range">
+    <div class="controlsContainer d-flex">
+        <i id="videoFrameFastBackBtn" class="fas fa-fast-backward hover-icon"></i>
+        <i id="videoFrameBackBtn" class="fas fa-step-backward hover-icon ml-2"></i>
+        <i id="videoPlayPauseBtn" class="fas fa-play hover-icon ml-2"></i>
+        <i id="videoFrameForwardBtn" class="fas fa-step-forward hover-icon ml-2"></i>
+        <i id="videoFrameFastForwardBtn" class="fas fa-fast-forward hover-icon ml-2"></i>
+        <div id="videoSeekContainer" class="flex-grow-1">
+        <input id="videoSeek" max="10000" type="range">
+        </div>
+        <span data-toggle="tooltip" data-placement="top" title="Current Frame Number" class="badge badge-primary" id="frameCount">0</span>
+    </div>
 </div>

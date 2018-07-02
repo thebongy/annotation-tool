@@ -13,19 +13,12 @@ html, body {
                                   supported by Chrome and Opera */
 }
 
-#navbar {
-  z-index:200;
-  color:#FFF;
-  position:fixed;
-  top:0;
-  left:0;
-  right:0;
-}
-
 .hover-icon {
   opacity: 0.5;
 }
-
+.hover-icon-active {
+  opacity: 1 !important;
+}
 .hover-icon:hover {
   opacity: 1;
   cursor:pointer;
@@ -33,6 +26,10 @@ html, body {
 
 .file-list-name {
   float: left;
+}
+
+.list-del-icon {
+  float:right;
 }
 
 #nav-filename {
@@ -47,40 +44,62 @@ html, body {
   left:0;
   right:0;
   bottom:0;
-  padding-left: 80px;
   color:#FFF;
-}
-.list-del-icon {
-  float:right;
+  padding:5px 80px 5px 80px;
+  z-index:100;
 }
 
-.v-control-icon, #frameCount {
+#video-controls svg {
   font-size: 40px;
-  margin:10px;
 }
 
-#video-buttons {
-  margin: 0 auto;
-}
-.tools li {
-  padding:2px;
-  font-size:35px;
+#videoSeekContainer {
+  display:inline-block;
+  margin-top:15px;
+  margin-left:50px;
+  margin-right:20px;
 }
 
+#frameCount {
+  display:inline-block;
+  font-size:20px;
+}
 .main-frame {
-  position: relative;
-  padding: 0px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right:0;
+  bottom:0;
 }
 
-.main-frame img, .main-frame video, .main-framce canvas {
+.main-frame img, .main-frame video, .canvasContainer {
   position:absolute;
-  top: 50%;
-  left: 50%;
+  top: 0;
+  left: 0;
+  right:0;
+  bottom:0;
+  margin:auto;
   width: 640px;
-  margin-left: -320px;
 }
 
-.list-group-item:hover {
+.main-frame img, .main-frame video {
+  z-index: 1;
+}
+
+.canvasContainer {
+  z-index: 2;
+}
+
+#myCanvas {
+  width: 100%;
+  height: 100%;
+}
+
+#objects .hover-icon {
+  font-size:20px;
+}
+
+.file-list-item:hover {
   color: #007bff;
   cursor: pointer;
 }
@@ -89,8 +108,28 @@ html, body {
   background-color: #e6e6e6;
 }
 
+
+
 /*
+ * ------------------------------------------------------------
+ * Navbar
+ * ------------------------------------------------------------
+ */
+
+#navbar {
+  z-index:200;
+  color:#FFF;
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+}
+
+
+/*
+ * ------------------------------------------------------------
  * Sidebar
+ * ------------------------------------------------------------
  */
 
 .toolbar {
@@ -100,9 +139,13 @@ html, body {
   bottom: 0;
   left: 0;
   width:80px;
-  z-index: 100; /* Behind the navbar */
+  z-index: 100;
   padding: 48px 0 0; /* Height of navbar */
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.toolbar svg {
+  font-size: 40px;
 }
 
 #options-window {
@@ -121,96 +164,4 @@ html, body {
   padding-top: .5rem;
   overflow-x: hidden;
   overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
-}
-
-
-/*Range Styling CSS */
-
-input[type=range] {
-  -webkit-appearance: none;
-  margin: 10px 0;
-  width:600px;
-}
-input[type=range]:focus {
-  outline: none;
-}
-input[type=range]::-webkit-slider-runnable-track {
-  width: 100%;
-  height: 12.8px;
-  cursor: pointer;
-  animate: 0.2s;
-  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
-  background: #FFF;
-  border-radius: 25px;
-  border: 0px solid #000101;
-}
-input[type=range]::-webkit-slider-thumb {
-  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
-  border: 0px solid #000000;
-  height: 20px;
-  width: 39px;
-  border-radius: 7px;
-  background: #000;
-  cursor: pointer;
-  -webkit-appearance: none;
-  margin-top: -3.6px;
-}
-input[type=range]:focus::-webkit-slider-runnable-track {
-  background: #FFF;
-}
-input[type=range]::-moz-range-track {
-  width: 100%;
-  height: 12.8px;
-  cursor: pointer;
-  animate: 0.2s;
-  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
-  background: #FFF;
-  border-radius: 25px;
-  border: 0px solid #000101;
-}
-input[type=range]::-moz-range-thumb {
-  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
-  border: 0px solid #000000;
-  height: 20px;
-  width: 39px;
-  border-radius: 7px;
-  background: #000;
-  cursor: pointer;
-}
-input[type=range]::-ms-track {
-  width: 100%;
-  height: 12.8px;
-  cursor: pointer;
-  animate: 0.2s;
-  background: transparent;
-  border-color: transparent;
-  border-width: 39px 0;
-  color: transparent;
-}
-input[type=range]::-ms-fill-lower {
-  background: #FFF;
-  border: 0px solid #000101;
-  border-radius: 50px;
-  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
-}
-input[type=range]::-ms-fill-upper {
-  background: #FFF;
-  border: 0px solid #000101;
-  border-radius: 50px;
-  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
-}
-input[type=range]::-ms-thumb {
-  box-shadow: 0px 0px 0px #000000, 0px 0px 0px #0d0d0d;
-  border: 0px solid #000000;
-  height: 20px;
-  width: 39px;
-  border-radius: 7px;
-  background: #000;
-  cursor: pointer;
-}
-input[type=range]:focus::-ms-fill-lower {
-  background: #FFF;
-}
-input[type=range]:focus::-ms-fill-upper {
-  background: #FFF;
 }

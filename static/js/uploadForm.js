@@ -29,8 +29,8 @@ function addFile() {
                     icon = "<i class='hover-icon fas fa-video'></i>";
                 }
 
-                const newFileHTML = $(`<li class="list-group-item">
-              <span class="list-file-name">
+                const newFileHTML = $(`<li class="file-list-item list-group-item" data-original="${data["original"]}" data-ID="${data["id"]}" data-type="${fileType}">
+              <span class="file-list-name">
                 ${icon}
                 ${data["original"]}
               </span>

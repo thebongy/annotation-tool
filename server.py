@@ -66,7 +66,7 @@ def deleteFile(fileID):
 @app.route("/data/<fileID>")
 def getFile(fileID):
     print("Sending")
-    return send_file("./data/%s" % fileID, conditional=True)
+    return send_file((app.config['UPLOAD_FOLDER']+"/%s") % fileID, conditional=True)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)

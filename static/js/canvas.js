@@ -1,140 +1,467 @@
-function CanvasHandler(canvasElem, imageView, videoView) {
-    this.type = undefined;
-    this.videoPaused = true;
-    
-    this.video = undefined;
-    
-    this.selection = null;
-    this.dragging = false;
-    this.canvas = canvasElem;
-    this.imageView = imageView;
-    this.videoView = videoView;
-    this.ctx = this.canvas[0].getContext("2d");
-    
-    this.videoSeeked = false;
-    this.loadFile = function (type)  {
-        this.type = type;
-        this.imageView.hide();
-        this.videoView.hide();
-        
-        if (this.type == "video") {
-            this.pauseVideo();
-            this.videoView.show();
-            this.video = VideoFrame();
-            
-        } else if (this.type = "image") {
-            this.imageView.show();
-        }
+const START_FRAME_MSG = "Set the current frame as the first frame when the object appears";
+const END_FRAME_MSG = "Set the current frame as the last frame when the object appears";
 
-        this.canvas.show();
+function ObjectList() {
+    this.objects = {};
+    this.init = function (canvasHandler) {
+        this.listContainer = $(".object-list");
+
+        this.canvasHandler = canvasHandler;
+
+        const self = this;
+
+        this.listContainer.on("click", ".edit-icon", function () {
+            const listElem = $(this).parent().parent().parent();
+            const dataID = listElem.attr("data-id");
+
+            const nameElem = listElem.find(".object-list-name");
+            const newName = prompt("Edit Object Name", nameElem.text());
+            nameElem.text(newName);
+        });
+
+        this.listContainer.on("click", ".setStart-icon", function () {
+            const listElem = $(this).parent().parent().parent();
+            const dataID = listElem.attr("data-id");
+            self.objects[dataID].setStartFrame(self.canvasHandler.currentFrame);
+            listElem.find(".frameStartNum").text(self.canvasHandler.currentFrame);
+        });
+
+        this.listContainer.on("click", ".setEnd-icon", function () {
+            const listElem = $(this).parent().parent().parent();
+            const dataID = listElem.attr("data-id");
+            self.objects[dataID].setEndFrame(self.canvasHandler.currentFrame);
+            listElem.find(".frameEndNum").text(self.canvasHandler.currentFrame);
+        });
+
+        this.listContainer.on("click", ".delete-icon", function () {
+            const listElem = $(this).parent().parent().parent();
+            const dataID = listElem.attr("data-id");
+
+            canvasHandler.deleteObject(dataID);
+            listElem.remove();
+        });
     }
-    
-    this.playPauseVideo = function() {
-      if (this.type === "video") {
-        if (this.videoPaused) {
-          this.playVideo()
-        } else {
-          this.pauseVideo();
+
+    this.addNewObject = function (rect) {
+        const text = "Object";
+        const ID = rect.get("OBJ_ID");
+        this.listContainer.append(
+            `
+            <a href="#" class="list-group-item list-group-item-action flex-column align-items-start" data-id=${ID}>
+              <div class="d-flex justify-content-between">
+                <h5 class="w-100 mb-1 object-list-name">${text}</h5>
+                <span data-toggle="tooltip" data-placement="top" title="Edit Object Name">
+                    <i class="fas fa-pen hover-icon edit-icon"></i>
+                </span>
+                <span data-toggle="tooltip" data-html="true" data-placement="top" title="<b>Set Start Frame</b><br>${START_FRAME_MSG}">
+                    <i class="fas fa-step-backward ml-2 hover-icon setStart-icon"></i>
+                </span>
+                <span data-toggle="tooltip" data-html="true" data-placement="top" title="<b>Set End Frame</b><br>${END_FRAME_MSG}">
+                    <i class="fas fa-step-forward ml-2 hover-icon setEnd-icon"></i>
+                </span>
+                <span data-toggle="tooltip" data-placement="top" title="Delete Object">
+                    <i class="fas fa-trash ml-2 hover-icon delete-icon"></i>
+                </span>
+              </div>
+              <div class="d-flex justify-content-between">
+              <div class="object-list-frameStart">Start: <span class="frameStartNum"></span></div>
+              <div class="object-list-frameEnd">End: <span class="frameEndNum"></span></div>
+              </div>
+            </a>
+            `);
+
+        const newObject = new ObjectHandler();
+        newObject.init(rect, this);
+
+        rect.set({"OBJ": newObject});
+        this.objects[ID] = newObject;
+
+        $('[data-toggle="tooltip"]').tooltip();
+    }
+
+    this.selectObject = function (ID) {
+        this.listContainer.find("a").removeClass("active");
+        this.listContainer.find(`[data-id='${ID}']`).addClass("active");
+    }
+
+    this.drawObjects = function (frame) {
+        for (const obj in this.objects) {
+            this.objects[obj].draw(frame);
         }
-        return true;
-      }
-      return false;
     }
-    
-    this.playVideo = function () {
-      this.videoPaused = false;
-      this.videoView[0].play();
-    }
-    
-    this.pauseVideo = function () {
-      this.videoPaused = true;
-      this.videoView[0].pause();
-    }
-    this.videoNextFrame = function () {
-      if (this.type == "video") {
-        this.video.seekForward();
-      }
-    }
-    
-    this.videoPreviousFrame = function () {
-      if (this.type == "video") {
-        this.video.seekBackward();
-      }
-    }
-    
-    this.seekVideo = function (percentage) {
-      if (this.type == "video") {
-        console.log(this.videoView[0].duration * (percentage/100));
-        this.videoView[0].currentTime = this.videoView[0].duration * (percentage/100);
-      }
-    }
-    
 }
 
-$(function() {
-    const mainCanvas = $("#mainCanvas");
-    const imageView = $("#imageView");
-    const videoView = $("#videoView");
-    
-    const videoControls = $("#video-controls");
-  
-    const videoFrameBack = $("#videoFrameBackBtn");
-    const videoFrameForward = $("#videoFrameForwardBtn");
-    const videoSeek = $("#videoSeek");
-    
-    const frameCount = $("#frameCount");
-    
-    const canvasObj = new CanvasHandler(mainCanvas, imageView, videoView);
-    
-    videoControls.on("click", "#videoPlayPauseBtn", function () {
-      if (canvasObj.playPauseVideo()) {
-        if (canvasObj.videoPaused) {
-          $("#videoPlayPauseBtn").removeClass("fa-pause").addClass("fa-play");
+function ObjectHandler() {
+     this.startFrame = null;
+     this.endFrame = null;
+
+     this.hidden = null;
+
+     this.annotations = {};
+
+     this.rect = null;
+
+     this.init = function (rect, objectList) {
+        this.rect = rect;
+        this.ID = this.rect.get("OBJ_ID");
+        this.objectList = objectList;
+     }
+
+     this.draw = function (frame) {
+        if (this.startFrame !== null && frame < this.startFrame) {
+            this.hide();
+        } else if (this.endFrame !== null && frame > this.endFrame ) {
+            this.hide();
         } else {
-          $("#videoPlayPauseBtn").removeClass("fa-play").addClass("fa-pause");
+            if (this.hidden === true) {
+                this.show();
+            }
+
+            const adjacent = this.getAdjacentAnnotations(frame);
+            if (adjacent.left === null) {
+                this.drawRect(adjacent.right);
+            } else if (adjacent.right === null) {
+                this.drawRect(adjacent.left);
+            } else {
+                if (adjacent.left.frame === adjacent.right.frame) {
+                    this.drawRect(adjacent.left);
+                } else {
+                let current = {
+                    t: null,
+                    l: null,
+                    b: null,
+                    r: null,
+                    frame: frame
+                    }
+                current = this.linearInterpolate(adjacent.left, current, adjacent.right);
+                this.drawRect(current);
+                }
+            }
         }
-      }
-    });
-    
-    videoFrameBack.click(function () {
-      canvasObj.videoPreviousFrame();
-    })
-    
-    videoFrameForward.click(function() {
-      canvasObj.videoNextFrame();
-    })
-    
-    videoSeek.change(function() {
-      canvasObj.seekVideo(this.value);
-    })
-    
-    videoView.on("timeupdate", function() {
-      frameCount.text(canvasObj.video.get());
-      videoSeek[0].value = 0;
-    })
 
-    mainCanvas.hide();
-    imageView.hide();
-    videoView.hide();
+        this.rect.setCoords();
+     }
 
-    imageView.on("load", function (event) {
-        canvasObj.loadFile("image", this.width, this.height);
-    });
+     this.drawRect = function(position) {
+        const top = position.t;
+        const left = position.l;
+        const width = Math.abs(left - position.r);
+        const height = Math.abs(top - position.b);
+        this.rect.set({
+            top: position.t,
+            left: position.l,
+            width: width,
+            height: height,
+            scaleX: 1,
+            scaleY: 1
+        });
 
-    videoView.on("loadeddata", function() {
-        canvasObj.loadFile("video", this.videoWidth, this.videoHeight);
-    })
-    
-    const navFileName = $("#nav-filename");
-    const fileList = $(".file-list");
-    fileList.on("click", ".file-list-name", function (event) {
-        const listItem = $(this).parent();
-        const fileType = listItem.attr("data-type");
-        const dataSrc = `/data/${listItem.attr("data-id")}`;
-        if (fileType == "image") {
-            imageView.attr("src", dataSrc);
-        } else {
-            videoView.attr("src", dataSrc);
+     }
+
+     this.hide = function () {
+        this.rect.set({ visible: false });
+        this.hidden = true;
+     }
+
+     this.show = function () {
+        this.rect.set({ visible: true });
+        this.hidden = false;
+     }
+
+     this.linearInterpolate = function (left, current, right) {
+        const totalFrames = right.frame - left.frame;
+        const topStep = (right.t - left.t) / totalFrames;
+        const leftStep = (right.l - left.l) / totalFrames;
+        const bottomStep = (right.b - left.b) / totalFrames;
+        const rightStep = (right.r - left.r) / totalFrames;
+
+        const frameDiff = current.frame - left.frame;
+
+        current.t = left.t + (frameDiff * topStep);
+        current.l = left.l + (frameDiff * leftStep);
+        current.b = left.b + (frameDiff * bottomStep);
+        current.r = left.r + (frameDiff * rightStep);
+
+        return current
+     }
+
+     this.setStartFrame = function (frame) {
+        this.startFrame = frame;
+     }
+
+     this.setEndFrame = function (frame) {
+        this.endFrame = frame;
+     }
+
+     this.setFramePosition = function (frame, position) {
+        // TODO: Handle Start frame and end frame here?
+        position.frame = frame;
+        this.annotations[frame] = position;
+     }
+
+     this.getAdjacentAnnotations = function (frame) {
+        if (this.startFrame !== null && frame < this.startFrame) {
+            return {hidden:true };
         }
-    });
-});
+
+        if (this.endFrame !== null && frame > this.endFrame) {
+            return { hidden: true };
+        }
+
+        if (this.annotations[frame] !== undefined) {
+            return {
+                left: this.annotations[frame],
+                right: this.annotations[frame]
+            }
+        } 
+
+
+        let left = null;
+        let right =  null;
+
+        for (const f in this.annotations) {
+            if (f < frame) {
+                if (left === null || f > left.frame) {
+                    left = this.annotations[f];
+                }
+            } else {
+                if (right === null || f < right.frame) {
+                    right = this.annotations[f];
+                }
+            }
+        }
+
+        return {
+            left: left,
+            right: right
+        }
+     }
+
+}
+
+function CanvasHandler(canvasID) {
+    this.canvasID = canvasID;
+    this.canvasElem = $("#" + canvasID);
+    
+    this.currentFrame = null;
+    this.currentTool = undefined;
+    this.cursor = "default";
+
+    this.mouseIsDown = false;
+
+    this.NEW_RECT_TOOL = 0;
+    this.MOVE_RECT_TOOL = 1;
+
+    this.init = function () {
+        this.objectList = new ObjectList();
+        this.objectList.init(this);
+
+        this.canvas = new fabric.Canvas(this.canvasID, {
+            uniScaleTransform: true,
+            selection:false,
+            width:640,
+            height:480
+        });
+
+        this.xLine = new fabric.Line([0,0,0,0], {
+            stroke: "#cccccc",
+            strokeWidth: 2
+        });
+
+        this.yLine = new fabric.Line([0,0,0,0], {
+            stroke: "#cccccc",
+            strokeWidth: 2
+        });
+
+        this.canvas.add(this.xLine);
+        this.canvas.add(this.yLine);
+
+        const canvasObj = this;
+
+        this.canvas.on("mouse:down", function (event) {
+          canvasObj.mouseDown(event);  
+        });
+
+        this.canvas.on("mouse:move", function (event) {
+            canvasObj.mouseMove(event);
+        });
+
+        this.canvas.on("mouse:up", function(event) {
+            canvasObj.mouseUp(event);
+        });
+
+        this.canvas.on("object:scaled", function(event) {
+            canvasObj.objectScaled(event);
+        });
+
+        this.canvas.on("object:moved", function (event) {
+            canvasObj.objectMoved(event);
+        });
+
+        const toolbar = $(".toolbar");
+
+        toolbar.on("click", "#newRectBtn", function (event) {
+            canvasObj.currentTool = canvasObj.NEW_RECT_TOOL;
+            canvasObj.canvas.defaultCursor = "crosshair";
+            $(".toolbar-icon").removeClass("hover-icon-active");
+            $(this).addClass("hover-icon-active");
+        });
+
+        toolbar.on("click", "#moveRectBtn", function (event) {
+            canvasObj.currentTool = canvasObj.MOVE_RECT_TOOL;
+            canvasObj.canvas.defaultCursor = "default";
+
+            canvasObj.hideCursorAxes();
+
+            $(".toolbar-icon").removeClass("hover-icon-active");
+            $(this).addClass("hover-icon-active");
+        })
+    }
+
+    this.drawFrame = function (frame, videoPlaying) {
+        if (videoPlaying) {
+            frame += 2;
+        }
+        if (frame !== this.currentFrame) {
+            this.currentFrame = frame;
+            this.objectList.drawObjects(frame);
+            this.canvas.renderAll();
+        }
+    }
+
+    this.mouseDown = function (event) {
+        this.mouseIsDown = true;
+        if (this.currentTool === this.NEW_RECT_TOOL) {
+            let pointer = this.canvas.getPointer(event.e)
+            this.startX = pointer.x
+            this.startY = pointer.y
+            this.newRect = new fabric.Rect({
+                left: this.startX,
+                top:this.startY,
+                width:0,
+                height:0,
+                angle:0,
+                stroke: "white",
+                strokeDashArray: [5,5],
+                strokeWidth: 2,
+                fill: 'rgba(0,0,0,0)'
+            });
+            this.canvas.add(this.newRect);
+        } else if (this.currentTool === this.MOVE_RECT_TOOL) {
+            if (event.target) {
+                this.objectList.selectObject(event.target.get("OBJ_ID"));
+            }
+        }
+    }
+
+    this.mouseMove = function (event) {
+        if (this.currentTool === this.NEW_RECT_TOOL) {
+
+            let pointer = this.canvas.getPointer(event.e);
+            let currentX = pointer.x;
+            let currentY = pointer.y;
+
+            this.updateCursorAxes(currentX, currentY);
+
+            if (this.mouseIsDown) {
+                if (currentX < this.startX) {
+                    this.newRect.set({ left: currentX });
+                }
+
+                if (currentY < this.startY) {
+                    this.newRect.set({ top: currentY });
+                }
+
+                this.newRect.set({ width: Math.abs(this.startX - currentX) });
+                this.newRect.set({ height: Math.abs(this.startY - currentY) });
+
+            }
+
+            this.canvas.renderAll();
+        }
+    }
+
+    this.mouseUp = function (event) {
+        if (this.currentTool === this.NEW_RECT_TOOL && this.mouseIsDown) {
+            this.newRect.set({ strokeDashArray: []});
+            this.newRect.setCoords();
+            this.addNewObject(this.newRect);
+        }
+        this.mouseIsDown = false;
+    }
+
+    this.addNewObject = function (rect) {
+        let newObjID = generateID();
+        rect.set({ OBJ_ID: newObjID });
+
+        this.objectList.addNewObject(rect);
+        this.updateObjectProperties(rect);
+    }
+    this.updateCursorAxes = function (pointerX, pointerY) {
+        this.xLine.set({x1: 0, y1: pointerY, x2: this.canvas.getWidth(), y2: pointerY});
+        this.yLine.set({x1: pointerX, y1: 0, x2: pointerX, y2: this.canvas.getHeight()});
+    }
+
+    this.hideCursorAxes = function () {
+        this.xLine.set({x1:0, y1:0, x2:0, y2:0});
+        this.yLine.set({x1:0, y1:0, x2:0, y2:0});
+        this.canvas.renderAll();
+    }
+
+    this.updateObjectProperties = function (rect) {
+        rect.setCoords();
+        const coords = rect.oCoords;
+        const objID = rect.get("OBJ_ID");
+        const obj = rect.get("OBJ");
+
+        const t = coords.tl.y;
+        const l = coords.tl.x;
+
+        const b = coords.br.y;
+        const r = coords.br.x;
+
+        const width = Math.abs(r - l);
+        const height = Math.abs(b - t);
+        const position = {
+            t: t,
+            l:l,
+            b:b,
+            r:r,
+            frame: this.currentFrame
+        }
+
+        rect.set({
+            top: t,
+            left: l,
+            width: width,
+            height: height,
+            scaleX: 1,
+            scaleY: 1
+        });
+        rect.setCoords();
+        obj.setFramePosition(this.currentFrame, position);
+    }
+
+    this.deleteObject = function (ID) {
+        const objects = this.canvas.getObjects();
+        for (let i=0; i<objects.length; i++) {
+            if (objects[i].get("OBJ_ID") === ID) {
+                this.canvas.remove(objects[i]);
+                break;
+            }
+        }
+    }
+
+    this.objectScaled = function (event) {
+        this.updateObjectProperties(event.target);      
+    }
+
+    this.objectMoved = function (event) {
+        this.updateObjectProperties(event.target);
+    }
+}
+
+
+function generateID() {
+  return '_' + Math.random().toString(36).substr(2, 9);
+}
