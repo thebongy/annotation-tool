@@ -4,6 +4,8 @@ import os
 from exceptions import InvalidUsage
 from flask import jsonify
 
+from config import *
+
 class Database:
     def __init__(self, db):
         self.db = db
@@ -56,7 +58,7 @@ class Database:
         fileID = str(uuid.uuid4())
 
         new_file_name = fileID + ext
-        new_file_path = os.path.join(".", "data", new_file_name)
+        new_file_path = os.path.join(DATA_FOLDER, new_file_name)
         print("saving", fileName, "to", new_file_path)
         file.save(new_file_path)
 

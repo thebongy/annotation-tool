@@ -5,11 +5,10 @@ import sqlite3
 from database import Database
 from exceptions import InvalidUsage
 
-DATABASE = './data/data.db'
+from config import *
 
 app = Flask(__name__)
-
-app.config['UPLOAD_FOLDER'] = "./data"
+app.config['UPLOAD_FOLDER'] = DATA_FOLDER
 
 def get_db():
     db = getattr(g, '_database', None)
