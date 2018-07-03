@@ -47,15 +47,25 @@ def create_new_project():
 def annotater_page(projectID):
     db = get_db()
     project = db.get_project_by_ID(projectID)
-    print(project)
+    
     return render_template("annotate.html", project=project, page="annotate")
 
 @app.route("/project/<projectID>/upload", methods=["POST"])
 def upload_file(projectID):
     db = get_db()
-    print(request.files)
     return jsonify(db.add_file_to_project(request.files["file"], projectID))
 
+@app.route("/project/<fileID>/data", methods=["GET","POST"])
+def file_annotations(fileID):
+    db = get_db()
+    if request.method == "POST":
+        data = request.get_json(force=True)
+        print(data)
+        db.store_file_annotations(fileID, data)
+        return "Success"
+    elif request.method == "GET":
+        data = db.get_file_annotations(fileID)
+        return jsonify(data)
 @app.route("/deleteFile/<fileID>", methods=["POST"])
 def deleteFile(fileID):
     db = get_db()

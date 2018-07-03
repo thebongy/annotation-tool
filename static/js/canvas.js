@@ -5,18 +5,43 @@ function ObjectList() {
     this.objects = {};
     this.init = function (canvasHandler) {
         this.listContainer = $(".object-list");
+        this.nameOptionsModal = $("#nameOptionsModal");
+        this.saveDataBtn = $("#saveDataBtn");
 
         this.canvasHandler = canvasHandler;
 
         const self = this;
 
+        this.nameOptionsModal.on("click", "#newNameOptionBtn", function () {
+            let ID = $(this).attr("data-id");
+            let name = prompt("Name of new annotation type:");
+            if (name === "") {
+                alert("Empty name not allowed!!");
+            } else if (name) {
+                self.setObjectName(ID, name);
+                self.nameOptionsModal.modal("hide");
+            }
+
+        });
+        this.nameOptionsModal.on("click", "#saveOptionNameBtn", function () {
+            let ID = $(this).attr("data-id");
+
+            const name = $("input[name=nameOption]:checked").attr("value");
+            if (name === undefined) {
+                alert("Please select atleast one option!!");
+            } else {
+                self.setObjectName(ID, name);
+                self.nameOptionsModal.modal("hide");
+            }
+        });
+
         this.listContainer.on("click", ".edit-icon", function () {
             const listElem = $(this).parent().parent().parent();
             const dataID = listElem.attr("data-id");
 
-            const nameElem = listElem.find(".object-list-name");
-            const newName = prompt("Edit Object Name", nameElem.text());
-            nameElem.text(newName);
+            $("#saveOptionNameBtn").attr("data-id", dataID);
+            $("#newNameOptionBtn").attr("data-id", dataID);
+            self.nameOptionsModal.modal("show");
         });
 
         this.listContainer.on("click", ".setStart-icon", function () {
@@ -34,16 +59,33 @@ function ObjectList() {
         });
 
         this.listContainer.on("click", ".delete-icon", function () {
+            $(this).parent().tooltip("hide");
             const listElem = $(this).parent().parent().parent();
             const dataID = listElem.attr("data-id");
 
             canvasHandler.deleteObject(dataID);
             listElem.remove();
         });
+
+        this.saveDataBtn.click(function () {
+            self.saveAnnotations(function (data) {
+                alert(data);
+            })
+        })
     }
 
-    this.addNewObject = function (rect) {
-        const text = "Object";
+    this.addNewObject = function (rect, data) {
+        if (data === undefined) {
+            data = {}
+        }
+
+        let text;
+        if (data.name !== undefined) {
+            text = data.name;
+        } else {
+            text = "Object";
+        }
+
         const ID = rect.get("OBJ_ID");
         this.listContainer.append(
             `
@@ -71,9 +113,8 @@ function ObjectList() {
             `);
 
         const newObject = new ObjectHandler();
-        newObject.init(rect, this);
+        newObject.init(text, rect, data, this);
 
-        rect.set({"OBJ": newObject});
         this.objects[ID] = newObject;
 
         $('[data-toggle="tooltip"]').tooltip();
@@ -84,10 +125,71 @@ function ObjectList() {
         this.listContainer.find(`[data-id='${ID}']`).addClass("active");
     }
 
+    this.setObjectName = function (ID, name) {
+        this.objects[ID].setName(name);
+        this.listContainer
+            .find(`[data-id='${ID}']`)
+            .find(".object-list-name")
+            .text(name);
+    }
     this.drawObjects = function (frame) {
         for (const obj in this.objects) {
             this.objects[obj].draw(frame);
         }
+    }
+
+    this.serialize = function () {
+        let data = {};
+
+        for (const obj in this.objects) {
+            data[obj] = this.objects[obj].serialize();
+        }
+
+        return data;
+    }
+
+    this.loadAnnotations = function (data) {
+        this.listContainer.empty();
+        for (obj in data) {
+            this.newRectFromData(data[obj]);
+        }
+    }
+
+    this.saveAnnotations = function (cb) {
+        $.ajax({
+            type: 'POST',
+            url: `/project/${this.fileID}/data`,
+            data: JSON.stringify(this.serialize()),
+            success: function(data) { cb(data);},
+            contentType: "application/json"
+        });
+    }
+
+    this.newRectFromData = function (data) {
+        let newRect = new fabric.Rect({
+                left: 0,
+                top: 0,
+                width: 0,
+                height: 0,
+                angle:0,
+                stroke: "white",
+                strokeWidth: 2,
+                fill: 'rgba(0,0,0,0)'
+            });
+
+        this.canvasHandler.canvas.add(newRect);
+        newRect.setCoords();
+        this.addNewObject(newRect, data);
+    }
+
+    this.loadFile = function (fileID, cb) {
+        const self = this;
+        this.fileID = fileID;
+        $.getJSON(`/project/${fileID}/data`, function (data) {
+            self.loadAnnotations(data);
+            console.log("Done loading");
+            cb();
+        })
     }
 }
 
@@ -101,10 +203,32 @@ function ObjectHandler() {
 
      this.rect = null;
 
-     this.init = function (rect, objectList) {
+     this.init = function (name, rect, data, objectList) {
         this.rect = rect;
+        this.name = name;
+
         this.ID = this.rect.get("OBJ_ID");
+
+        this.rect.set({"OBJ": this});
+
         this.objectList = objectList;
+        
+        if (data.annotations === undefined) {
+            this.annotations = {};
+        } else {
+            this.annotations = data.annotations;
+        }
+
+        console.log("Created object with annotations:");
+        console.log(this.annotations);
+     }
+
+     this.serialize = function () {
+        let data = {
+            name: this.name,
+            annotations: this.annotations
+        }
+        return data;
      }
 
      this.draw = function (frame) {
@@ -193,6 +317,10 @@ function ObjectHandler() {
         this.endFrame = frame;
      }
 
+     this.setName = function (name) {
+        this.name = name;
+     }
+
      this.setFramePosition = function (frame, position) {
         // TODO: Handle Start frame and end frame here?
         position.frame = frame;
@@ -243,6 +371,8 @@ function CanvasHandler(canvasID) {
     this.canvasID = canvasID;
     this.canvasElem = $("#" + canvasID);
     
+    this.canvasContainer = $(".canvasContainer");
+
     this.currentFrame = null;
     this.currentTool = undefined;
     this.cursor = "default";
@@ -318,10 +448,15 @@ function CanvasHandler(canvasID) {
         })
     }
 
+    this.loadFile = function (width, height, fileID, cb) {
+        this.canvasContainer
+                .width(width)
+                .height(height);
+        this.objectList.loadFile(fileID, cb);
+
+    }
+
     this.drawFrame = function (frame, videoPlaying) {
-        if (videoPlaying) {
-            frame += 2;
-        }
         if (frame !== this.currentFrame) {
             this.currentFrame = frame;
             this.objectList.drawObjects(frame);
@@ -417,9 +552,8 @@ function CanvasHandler(canvasID) {
         const t = coords.tl.y;
         const l = coords.tl.x;
 
-        const b = coords.br.y;
-        const r = coords.br.x;
-
+        const b = coords.br.y - 2;
+        const r = coords.br.x - 2;
         const width = Math.abs(r - l);
         const height = Math.abs(b - t);
         const position = {

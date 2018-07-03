@@ -5,6 +5,7 @@ import shutil
 appname = "annotation-tool"
 appauthor = "thebongy"
 
+ANNOTATION_TYPES = "Car,Bike,Truck,Cycle,Person"
 dirs = AppDirs("annotation-tool", "thebongy", version="0.1")
 
 DATA_FOLDER = dirs.user_data_dir

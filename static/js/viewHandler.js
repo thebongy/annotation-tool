@@ -7,8 +7,9 @@ function ViewHandler(imageView, videoView) {
     this.imageView = $("#imageView");
     this.videoView = $("#videoView");
     this.currentView = undefined;
-    this.canvasContainer = $(".canvasContainer");
+
     this.frameCountElem = $("#frameCount");
+    this.fileNameElem = $("#nav-filename");
 
     this.videoSeekElem = $("#videoSeek");
 
@@ -30,12 +31,12 @@ function ViewHandler(imageView, videoView) {
 
     this.canvas = new CanvasHandler("myCanvas");
     this.canvas.init();
-    this.loadFile = function (type)  {
+    this.loadFile = function (type, fileID, originalFileName)  {
         this.type = type;
         this.imageView.hide();
         this.videoView.hide();
-      
-      const self = this;
+
+        const self = this;
         if (this.type == "video") {
             this.video = new VideoFrame({
               id: "videoView",
@@ -64,10 +65,14 @@ function ViewHandler(imageView, videoView) {
         } else if (this.type = "image") {
             this.currentView = this.imageView;
         }
-        this.canvasContainer
-                .width(this.currentView.width())
-                .height(this.currentView.height());
-        this.currentView.show();
+        
+        this.canvas.loadFile(this.currentView.width(), this.currentView.height(), fileID, function () {
+          if (self.type === "video") {
+            self.seekVideo(1);
+          }
+          self.fileNameElem.text(originalFileName);
+          self.currentView.show();
+        });
     }
     
     this.drawCurrentFrame = function () {
@@ -176,11 +181,11 @@ $(function() {
     videoView.hide();
 
     imageView.on("load", function (event) {
-        viewHandler.loadFile("image", this.width, this.height);
+        viewHandler.loadFile("image", $(this).attr("data-id"), $(this).attr("data-original"));
     });
 
     videoView.on("loadeddata", function() {
-        viewHandler.loadFile("video", this.videoWidth, this.videoHeight);
+        viewHandler.loadFile("video", $(this).attr("data-id"), $(this).attr("data-original"));
     })
     
     const navFileName = $("#nav-filename");
@@ -188,10 +193,18 @@ $(function() {
     fileList.on("click", ".file-list-name", function (event) {
         const listItem = $(this).parent();
         const fileType = listItem.attr("data-type");
-        const dataSrc = `/data/${listItem.attr("data-id")}`;
+
+        const ID = listItem.attr("data-id");
+        const originalFileName = listItem.attr("data-original");
+
+        const dataSrc = `/data/${ID}`;
         if (fileType == "image") {
+            imageView.attr("data-id", ID);
+            imageView.attr("data-original", originalFileName);
             imageView.attr("src", dataSrc);
         } else {
+            videoView.attr("data-id", ID);
+            videoView.attr("data-original", originalFileName);
             videoView.attr("src", dataSrc);
         }
     });

@@ -1,6 +1,8 @@
 import uuid
 import sqlite3
 import os
+import json
+
 from exceptions import InvalidUsage
 from flask import jsonify
 
@@ -13,11 +15,10 @@ class Database:
     def create_new_project(self, projectName):
         projectID = str(uuid.uuid4())
         print("Creating project", projectID)
-        self.dbExec("INSERT INTO PROJECTS VALUES (?,?)", (projectID, projectName))
+        self.dbExec("INSERT INTO PROJECTS VALUES (?,?,?)", (projectID, projectName, ANNOTATION_TYPES))
         return projectID
 
     def dbExec(self, query, args=None):
-        print(args)
         out = self.cursor.execute(query, args).fetchall()
         self.db.commit()
         return out
@@ -29,7 +30,8 @@ class Database:
         return {
             "id": project[0],
             "name": project[1],
-            "files": self.get_project_files(ID)
+            "files": self.get_project_files(ID),
+            "annotationTypes": project[2]
         }
     def get_project_files(self, projectID):
         filesData = self.dbExec("SELECT * FROM FILES WHERE PROJECT=?", (projectID,))
@@ -62,8 +64,17 @@ class Database:
         print("saving", fileName, "to", new_file_path)
         file.save(new_file_path)
 
-        self.dbExec("INSERT INTO FILES VALUES (?,?,?,?)", (new_file_name, projectID, file_type, fileName))
+        self.dbExec("INSERT INTO FILES VALUES (?,?,?,?,?)", (new_file_name, projectID, file_type, fileName, "{}"))
         return {"original": fileName, "id":new_file_name, "type": file_type}
+
+    def store_file_annotations(self, fileID, data):
+        self.dbExec("UPDATE FILES SET DATA=? WHERE ID=?", (json.dumps(data), fileID))
+        return True
+
+    def get_file_annotations(self, fileID):
+        print("GETTING FOR", fileID)
+        annotationData = self.dbExec("SELECT DATA FROM FILES WHERE ID=?", (fileID,))
+        return json.loads(annotationData[0][0])
 
     def delete_file(self, fileID):
         self.dbExec("DELETE FROM FILES WHERE ID=?", (fileID,))
