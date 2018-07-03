@@ -40,7 +40,7 @@ function ViewHandler(imageView, videoView) {
         if (this.type == "video") {
             this.video = new VideoFrame({
               id: "videoView",
-              frameRate: 30,
+              frameRate: 29.97,
               callback: function(response, format) {
                 if (format === "frame") {
                   self.drawCurrentFrame();

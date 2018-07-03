@@ -4,9 +4,9 @@ block_cipher = None
 
 
 a = Analysis(['server.py'],
-             pathex=['/home/thebongy/Documents/PROGRAMMING/annotation-tool'],
+             pathex=['C:\\Users\\pankb\\Desktop\\Rishit Bansal\\annotation-tool'],
              binaries=[],
-             datas=[("data", "data"), ("templates","templates"),("static", "static")],
+             datas=[("./data", "./data"), ("./static", "./static"), ("./templates", "./templates")],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],

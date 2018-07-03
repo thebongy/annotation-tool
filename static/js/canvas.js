@@ -3,10 +3,18 @@ const END_FRAME_MSG = "Set the current frame as the last frame when the object a
 
 function ObjectList() {
     this.objects = {};
+    this.options = {"Object": 0};
     this.init = function (canvasHandler) {
         this.listContainer = $(".object-list");
         this.nameOptionsModal = $("#nameOptionsModal");
         this.saveDataBtn = $("#saveDataBtn");
+        this.exportDataBtn = $("#exportDataBtn");
+
+        const options = $("#nameOptions").attr("data-options").split(",");
+
+        for (let i = 0; i < options.length; i++) {
+            this.options[options[i]] = 0;
+        }
 
         this.canvasHandler = canvasHandler;
 
@@ -63,6 +71,7 @@ function ObjectList() {
             const listElem = $(this).parent().parent().parent();
             const dataID = listElem.attr("data-id");
 
+            delete self.objects[dataID];
             canvasHandler.deleteObject(dataID);
             listElem.remove();
         });
@@ -71,7 +80,11 @@ function ObjectList() {
             self.saveAnnotations(function (data) {
                 alert(data);
             })
-        })
+        });
+
+        this.exportDataBtn.click(function () {
+            self.exportData();
+        });
     }
 
     this.addNewObject = function (rect, data) {
@@ -81,9 +94,29 @@ function ObjectList() {
 
         let text;
         if (data.name !== undefined) {
-            text = data.name;
+            if (data.index > this.options[data.name]) {
+                this.options[data.name] = data.index;
+            }
+            text = data.name + " #" + data.index;
         } else {
-            text = "Object";
+            data.name = "Object"
+            data.index = ++(this.options["Object"]);
+            text = "Object #" + data.index;
+        }
+
+        let startFrame, endFrame;
+        if (data.startFrame === null || data.startFrame === undefined) {
+            data.startFrame = null;
+            startFrame = "";
+        } else {
+            startFrame = data.startFrame;
+        }
+
+        if (data.endFrame === null || data.endFrame === undefined) {
+            data.endFrame = null;
+            endFrame = "";
+        } else {
+            endFrame = data.endFrame;
         }
 
         const ID = rect.get("OBJ_ID");
@@ -106,14 +139,14 @@ function ObjectList() {
                 </span>
               </div>
               <div class="d-flex justify-content-between">
-              <div class="object-list-frameStart">Start: <span class="frameStartNum"></span></div>
-              <div class="object-list-frameEnd">End: <span class="frameEndNum"></span></div>
+              <div class="object-list-frameStart">Start: <span class="frameStartNum">${startFrame}</span></div>
+              <div class="object-list-frameEnd">End: <span class="frameEndNum">${endFrame}</span></div>
               </div>
             </a>
             `);
 
         const newObject = new ObjectHandler();
-        newObject.init(text, rect, data, this);
+        newObject.init(rect, data, this);
 
         this.objects[ID] = newObject;
 
@@ -148,6 +181,67 @@ function ObjectList() {
         return data;
     }
 
+    this.exportData = function () {
+        let frames = {};
+
+        function addFrameAnnotation(data) {
+            if (frames[data.frame] === undefined) {
+                frames[data.frame] = [data];
+            } else {
+                console.log(data);
+                frames[data.frame].push(data);
+            }
+            return frames;
+        }
+
+        let data = null;
+
+        // Loop through objects
+        for (const ID in this.objects) {
+            const obj = this.objects[ID];
+            // Sort object annotation by frame index
+            const frameData = Object.keys(obj.annotations);
+            frameData.sort(function (a, b) {
+                const aNum = parseInt(a);
+                const bNum = parseInt(b);
+                if (aNum > bNum) {
+                    return 1;
+                } else if (aNum === bNum) {
+                    return 0;
+                } else {
+                    return -1;
+                }
+            });
+            let previous = null;
+
+            // Loop throuogh sorted frame numbers
+            for (let i = 0; i < frameData.length; i++) {
+                const current = obj.annotations[frameData[i]];
+                current.name = obj.name;
+                current.index = obj.index;
+
+                // Linear Interpolate, if required.
+                if (previous !== null) {
+                    for (let j = (previous.frame + 1); j < current.frame; j++) {
+                        data = obj.linearInterpolate(previous, {
+                            frame: j
+                        }, current);
+                        data.name = obj.name;
+                        data.index = obj.index;
+                        addFrameAnnotation(data);
+                    }
+                }
+
+                // Add current Frame to data
+                addFrameAnnotation(current);
+                previous = current;
+            }
+        }
+
+        console.log(frames);
+        return frames;
+    }
+
     this.loadAnnotations = function (data) {
         this.listContainer.empty();
         for (obj in data) {
@@ -160,22 +254,24 @@ function ObjectList() {
             type: 'POST',
             url: `/project/${this.fileID}/data`,
             data: JSON.stringify(this.serialize()),
-            success: function(data) { cb(data);},
+            success: function (data) {
+                cb(data);
+            },
             contentType: "application/json"
         });
     }
 
     this.newRectFromData = function (data) {
         let newRect = new fabric.Rect({
-                left: 0,
-                top: 0,
-                width: 0,
-                height: 0,
-                angle:0,
-                stroke: "white",
-                strokeWidth: 2,
-                fill: 'rgba(0,0,0,0)'
-            });
+            left: 0,
+            top: 0,
+            width: 0,
+            height: 0,
+            angle: 0,
+            stroke: "white",
+            strokeWidth: 2,
+            fill: 'rgba(0,0,0,0)'
+        });
 
         this.canvasHandler.canvas.add(newRect);
         newRect.setCoords();
@@ -194,47 +290,57 @@ function ObjectList() {
 }
 
 function ObjectHandler() {
-     this.startFrame = null;
-     this.endFrame = null;
+    this.startFrame = null;
+    this.endFrame = null;
 
-     this.hidden = null;
+    this.hidden = null;
 
-     this.annotations = {};
+    this.annotations = {};
 
-     this.rect = null;
+    this.rect = null;
 
-     this.init = function (name, rect, data, objectList) {
+    this.init = function (rect, data, objectList) {
         this.rect = rect;
-        this.name = name;
+
+        this.name = data.name;
+        this.index = data.index;
 
         this.ID = this.rect.get("OBJ_ID");
 
-        this.rect.set({"OBJ": this});
+        this.rect.set({
+            "OBJ": this
+        });
 
         this.objectList = objectList;
-        
+
         if (data.annotations === undefined) {
             this.annotations = {};
         } else {
             this.annotations = data.annotations;
         }
 
+        this.startFrame = data.startFrame;
+        this.endFrame = data.endFrame;
+
         console.log("Created object with annotations:");
         console.log(this.annotations);
-     }
+    }
 
-     this.serialize = function () {
+    this.serialize = function () {
         let data = {
             name: this.name,
-            annotations: this.annotations
+            index: this.index,
+            annotations: this.annotations,
+            startFrame: this.startFrame,
+            endFrame: this.endFrame
         }
         return data;
-     }
+    }
 
-     this.draw = function (frame) {
+    this.draw = function (frame) {
         if (this.startFrame !== null && frame < this.startFrame) {
             this.hide();
-        } else if (this.endFrame !== null && frame > this.endFrame ) {
+        } else if (this.endFrame !== null && frame > this.endFrame) {
             this.hide();
         } else {
             if (this.hidden === true) {
@@ -250,23 +356,23 @@ function ObjectHandler() {
                 if (adjacent.left.frame === adjacent.right.frame) {
                     this.drawRect(adjacent.left);
                 } else {
-                let current = {
-                    t: null,
-                    l: null,
-                    b: null,
-                    r: null,
-                    frame: frame
+                    let current = {
+                        t: null,
+                        l: null,
+                        b: null,
+                        r: null,
+                        frame: frame
                     }
-                current = this.linearInterpolate(adjacent.left, current, adjacent.right);
-                this.drawRect(current);
+                    current = this.linearInterpolate(adjacent.left, current, adjacent.right);
+                    this.drawRect(current);
                 }
             }
         }
 
         this.rect.setCoords();
-     }
+    }
 
-     this.drawRect = function(position) {
+    this.drawRect = function (position) {
         const top = position.t;
         const left = position.l;
         const width = Math.abs(left - position.r);
@@ -280,19 +386,23 @@ function ObjectHandler() {
             scaleY: 1
         });
 
-     }
+    }
 
-     this.hide = function () {
-        this.rect.set({ visible: false });
+    this.hide = function () {
+        this.rect.set({
+            visible: false
+        });
         this.hidden = true;
-     }
+    }
 
-     this.show = function () {
-        this.rect.set({ visible: true });
+    this.show = function () {
+        this.rect.set({
+            visible: true
+        });
         this.hidden = false;
-     }
+    }
 
-     this.linearInterpolate = function (left, current, right) {
+    this.linearInterpolate = function (left, current, right) {
         const totalFrames = right.frame - left.frame;
         const topStep = (right.t - left.t) / totalFrames;
         const leftStep = (right.l - left.l) / totalFrames;
@@ -307,33 +417,37 @@ function ObjectHandler() {
         current.r = left.r + (frameDiff * rightStep);
 
         return current
-     }
+    }
 
-     this.setStartFrame = function (frame) {
+    this.setStartFrame = function (frame) {
         this.startFrame = frame;
-     }
+    }
 
-     this.setEndFrame = function (frame) {
+    this.setEndFrame = function (frame) {
         this.endFrame = frame;
-     }
+    }
 
-     this.setName = function (name) {
+    this.setName = function (name) {
         this.name = name;
-     }
+    }
 
-     this.setFramePosition = function (frame, position) {
+    this.setFramePosition = function (frame, position) {
         // TODO: Handle Start frame and end frame here?
         position.frame = frame;
         this.annotations[frame] = position;
-     }
+    }
 
-     this.getAdjacentAnnotations = function (frame) {
+    this.getAdjacentAnnotations = function (frame) {
         if (this.startFrame !== null && frame < this.startFrame) {
-            return {hidden:true };
+            return {
+                hidden: true
+            };
         }
 
         if (this.endFrame !== null && frame > this.endFrame) {
-            return { hidden: true };
+            return {
+                hidden: true
+            };
         }
 
         if (this.annotations[frame] !== undefined) {
@@ -341,11 +455,11 @@ function ObjectHandler() {
                 left: this.annotations[frame],
                 right: this.annotations[frame]
             }
-        } 
+        }
 
 
         let left = null;
-        let right =  null;
+        let right = null;
 
         for (const f in this.annotations) {
             if (f < frame) {
@@ -363,14 +477,14 @@ function ObjectHandler() {
             left: left,
             right: right
         }
-     }
+    }
 
 }
 
 function CanvasHandler(canvasID) {
     this.canvasID = canvasID;
     this.canvasElem = $("#" + canvasID);
-    
+
     this.canvasContainer = $(".canvasContainer");
 
     this.currentFrame = null;
@@ -388,17 +502,17 @@ function CanvasHandler(canvasID) {
 
         this.canvas = new fabric.Canvas(this.canvasID, {
             uniScaleTransform: true,
-            selection:false,
-            width:640,
-            height:480
+            selection: false,
+            width: 640,
+            height: 480
         });
 
-        this.xLine = new fabric.Line([0,0,0,0], {
+        this.xLine = new fabric.Line([0, 0, 0, 0], {
             stroke: "#cccccc",
             strokeWidth: 2
         });
 
-        this.yLine = new fabric.Line([0,0,0,0], {
+        this.yLine = new fabric.Line([0, 0, 0, 0], {
             stroke: "#cccccc",
             strokeWidth: 2
         });
@@ -409,18 +523,18 @@ function CanvasHandler(canvasID) {
         const canvasObj = this;
 
         this.canvas.on("mouse:down", function (event) {
-          canvasObj.mouseDown(event);  
+            canvasObj.mouseDown(event);
         });
 
         this.canvas.on("mouse:move", function (event) {
             canvasObj.mouseMove(event);
         });
 
-        this.canvas.on("mouse:up", function(event) {
+        this.canvas.on("mouse:up", function (event) {
             canvasObj.mouseUp(event);
         });
 
-        this.canvas.on("object:scaled", function(event) {
+        this.canvas.on("object:scaled", function (event) {
             canvasObj.objectScaled(event);
         });
 
@@ -450,8 +564,8 @@ function CanvasHandler(canvasID) {
 
     this.loadFile = function (width, height, fileID, cb) {
         this.canvasContainer
-                .width(width)
-                .height(height);
+            .width(width)
+            .height(height);
         this.objectList.loadFile(fileID, cb);
 
     }
@@ -472,12 +586,12 @@ function CanvasHandler(canvasID) {
             this.startY = pointer.y
             this.newRect = new fabric.Rect({
                 left: this.startX,
-                top:this.startY,
-                width:0,
-                height:0,
-                angle:0,
+                top: this.startY,
+                width: 0,
+                height: 0,
+                angle: 0,
                 stroke: "white",
-                strokeDashArray: [5,5],
+                strokeDashArray: [5, 5],
                 strokeWidth: 2,
                 fill: 'rgba(0,0,0,0)'
             });
@@ -500,15 +614,23 @@ function CanvasHandler(canvasID) {
 
             if (this.mouseIsDown) {
                 if (currentX < this.startX) {
-                    this.newRect.set({ left: currentX });
+                    this.newRect.set({
+                        left: currentX
+                    });
                 }
 
                 if (currentY < this.startY) {
-                    this.newRect.set({ top: currentY });
+                    this.newRect.set({
+                        top: currentY
+                    });
                 }
 
-                this.newRect.set({ width: Math.abs(this.startX - currentX) });
-                this.newRect.set({ height: Math.abs(this.startY - currentY) });
+                this.newRect.set({
+                    width: Math.abs(this.startX - currentX)
+                });
+                this.newRect.set({
+                    height: Math.abs(this.startY - currentY)
+                });
 
             }
 
@@ -518,7 +640,9 @@ function CanvasHandler(canvasID) {
 
     this.mouseUp = function (event) {
         if (this.currentTool === this.NEW_RECT_TOOL && this.mouseIsDown) {
-            this.newRect.set({ strokeDashArray: []});
+            this.newRect.set({
+                strokeDashArray: []
+            });
             this.newRect.setCoords();
             this.addNewObject(this.newRect);
         }
@@ -527,19 +651,41 @@ function CanvasHandler(canvasID) {
 
     this.addNewObject = function (rect) {
         let newObjID = generateID();
-        rect.set({ OBJ_ID: newObjID });
+        rect.set({
+            OBJ_ID: newObjID
+        });
 
         this.objectList.addNewObject(rect);
         this.updateObjectProperties(rect);
     }
     this.updateCursorAxes = function (pointerX, pointerY) {
-        this.xLine.set({x1: 0, y1: pointerY, x2: this.canvas.getWidth(), y2: pointerY});
-        this.yLine.set({x1: pointerX, y1: 0, x2: pointerX, y2: this.canvas.getHeight()});
+        this.xLine.set({
+            x1: 0,
+            y1: pointerY,
+            x2: this.canvas.getWidth(),
+            y2: pointerY
+        });
+        this.yLine.set({
+            x1: pointerX,
+            y1: 0,
+            x2: pointerX,
+            y2: this.canvas.getHeight()
+        });
     }
 
     this.hideCursorAxes = function () {
-        this.xLine.set({x1:0, y1:0, x2:0, y2:0});
-        this.yLine.set({x1:0, y1:0, x2:0, y2:0});
+        this.xLine.set({
+            x1: 0,
+            y1: 0,
+            x2: 0,
+            y2: 0
+        });
+        this.yLine.set({
+            x1: 0,
+            y1: 0,
+            x2: 0,
+            y2: 0
+        });
         this.canvas.renderAll();
     }
 
@@ -558,9 +704,9 @@ function CanvasHandler(canvasID) {
         const height = Math.abs(b - t);
         const position = {
             t: t,
-            l:l,
-            b:b,
-            r:r,
+            l: l,
+            b: b,
+            r: r,
             frame: this.currentFrame
         }
 
@@ -577,9 +723,12 @@ function CanvasHandler(canvasID) {
     }
 
     this.deleteObject = function (ID) {
+        console.log("deleting", ID);
         const objects = this.canvas.getObjects();
-        for (let i=0; i<objects.length; i++) {
+        for (let i = 0; i < objects.length; i++) {
             if (objects[i].get("OBJ_ID") === ID) {
+                const obj = objects[i].get("OBJ");
+                obj.hide();
                 this.canvas.remove(objects[i]);
                 break;
             }
@@ -587,7 +736,7 @@ function CanvasHandler(canvasID) {
     }
 
     this.objectScaled = function (event) {
-        this.updateObjectProperties(event.target);      
+        this.updateObjectProperties(event.target);
     }
 
     this.objectMoved = function (event) {
@@ -597,5 +746,5 @@ function CanvasHandler(canvasID) {
 
 
 function generateID() {
-  return '_' + Math.random().toString(36).substr(2, 9);
+    return '_' + Math.random().toString(36).substr(2, 9);
 }

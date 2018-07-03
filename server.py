@@ -1,13 +1,26 @@
 from flask import Flask, render_template, request, g, redirect, jsonify, send_from_directory, send_file
 import json
 import sqlite3
+import os
+import sys
 
 from database import Database
 from exceptions import InvalidUsage
 
 from config import *
 
-app = Flask(__name__)
+if getattr(sys, 'frozen', False):
+    print("FROZEN MODE")
+    template_folder = os.path.join(sys._MEIPASS, 'templates')
+    static_folder = os.path.join(sys._MEIPASS, 'static')
+    
+    print(template_folder)
+    print(os.listdir(sys._MEIPASS))
+    print(os.listdir("."))
+    app = Flask(__name__, template_folder=template_folder, static_folder=static_folder)
+else:
+    app = Flask(__name__)
+
 app.config['UPLOAD_FOLDER'] = DATA_FOLDER
 
 def get_db():
