@@ -1,16 +1,28 @@
 const START_FRAME_MSG = "Set the current frame as the first frame when the object appears";
 const END_FRAME_MSG = "Set the current frame as the last frame when the object appears";
 
+const COLORS = ["#CC0000","#FF8800","#007E33","#0099CC", "#00695c", "#0d47a1", "#9933CC", "#212121", "#3E4551", "#1C2331", "#263238"];
+let currentColor = 0;
 
 function Group(name, container) {
     this.name = name;
     this.container = container;
+    
+    this.color = COLORS[currentColor];
+    currentColor++;
+
+    if (currentColor === COLORS.length) {
+        currentColor = 0;
+    }
+    
+    this.nameOptions = $("#nameOptions");
+
     this.count = 0;
 
     this.objects = [];
 
     this.ID = generateID();
-
+    
     this.groupElem = $($.parseHTML(`
     <a href="#collapse${this.ID}" data-toggle="collapse" class="list-group-item list-group-item-action flex-column align-items-start">
         <div class="d-flex justify-content-between">
@@ -22,6 +34,18 @@ function Group(name, container) {
         </div>
     </div>
     `));
+
+    this.groupElem.css("background-color", this.color);
+    this.groupElem.css("color", "white");
+
+    this.nameOptions.append(`
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="nameOption" id="nameOption${this.ID}" value="${name}">
+            <label class="form-check-label" for="nameOption${this.ID}">
+            ${name}
+            </label>
+        </div>
+    `);
 
     this.nameElem = this.groupElem.find(".group-list-name");
     this.objectsContainer = this.groupElem.find(".card-body");
@@ -39,6 +63,8 @@ function Group(name, container) {
             listElem.obj.setCount(++this.count);
         }
         
+        listElem.obj.setColor(this.color);
+
         this.objects.push(listElem);
         this.objectsContainer.append(listElem.listElem);
     }
@@ -210,9 +236,14 @@ function ObjectList() {
         this.saveDataBtn = $("#saveDataBtn");
         this.exportDataBtn = $("#exportDataBtn");
 
+        this.importDataForm = $("#importDataForm");
+        this.importDataBtn = $("#importDataBtn");
+
         this.canvasHandler = canvasHandler;
 
         this.nameOptions = $("#nameOptions");
+        this.newNameOptionBtn = $("#newNameOptionBtn");
+
         const groupNames = this.nameOptions.attr("data-options").split(",");
 
         this.groups = {};
@@ -239,10 +270,33 @@ function ObjectList() {
             }
         });
 
+        this.newNameOptionBtn.click(function() {
+            const groupName = prompt("Enter the name of the new group");
+
+            if (groupName !== null) {
+                self.groups[groupName] = new Group(groupName, self.listContainer);
+            }
+        });
+
         this.saveDataBtn.click(function () {
             self.saveAnnotations(function (data) {
                 alert(data);
             })
+        });
+
+        this.importDataBtn.click(function () {
+            self.importDataForm.click();
+        });
+
+        this.fr = new FileReader();
+
+        this.importDataForm.change(function () {
+            file = this.files[0];
+            
+            self.fr.onload = function () {
+                console.log(self.fr.result);
+            }
+            self.fr.readAsText(file);
         });
 
         this.exportDataBtn.click(function () {
@@ -347,7 +401,15 @@ function ObjectList() {
     this.exportData = function () {
         let frames = {};
 
-        function addFrameAnnotation(data) {
+        function addFrameAnnotation(data, startFrame, endFrame) {
+            if (startFrame != null && data.frame < startFrame) {
+                return false;
+            }
+
+            if (endFrame != null && data.frame > endFrame) {
+                return false;
+            }
+
             if (frames[data.frame] === undefined) {
                 frames[data.frame] = [data];
             } else {
@@ -361,6 +423,10 @@ function ObjectList() {
         // Loop through objects
         for (const ID in this.objects) {
             const obj = this.objects[ID];
+
+            const startFrame = obj.startFrame;
+            const endFrame = obj.endFrame;
+
             // Sort object annotation by frame index
             const frameData = Object.keys(obj.annotations);
             frameData.sort(function (a, b) {
@@ -388,20 +454,28 @@ function ObjectList() {
                             frame: j
                         }, current);
                         data.name = obj.name;
-                        addFrameAnnotation(data);
+                        addFrameAnnotation(data, startFrame, endFrame);
                     }
                 }
 
                 // Add current Frame to data
-                addFrameAnnotation(current);
+                addFrameAnnotation(current, startFrame, endFrame);
                 previous = current;
             }
         }
 
+        $("<a />", {
+            "download": "data.json",
+            "href" : "data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(frames)),
+          }).appendTo("body")
+          .click(function() {
+             $(this).remove()
+          })[0].click();
         return frames;
     }
 
     this.loadAnnotations = function (data) {
+        console.log(data);
         for (const obj in this.objects) {
             this.objects[obj].deleteObj();
         }
@@ -436,7 +510,14 @@ function ObjectList() {
             angle: 0,
             stroke: "white",
             strokeWidth: 2,
-            fill: 'rgba(0,0,0,0)'
+            fill: 'rgba(0,0,0,0)',
+            transparentCorners: false,
+            cornerColor: 'white',
+            cornerStrokeColor: 'black',
+            borderColor: 'black',
+            cornerSize: 10,
+            cornerStyle: 'circle',
+            borderDashArray: [3, 3]
         });
 
         this.canvasHandler.addNewObject(newRect, data);
@@ -454,7 +535,6 @@ function ObjectList() {
     this.showGroupWindow = function (ID) {
         const obj = this.objects[ID];
         this.saveOptionBtn.attr("data-id", ID);
-
         this.nameOptionsModal.modal("show");
     }
 }
@@ -561,6 +641,10 @@ function ObjectHandler() {
             scaleY: 1
         });
 
+    }
+
+    this.setColor = function (color) {
+        this.rect.set({stroke: color});
     }
 
     this.hide = function () {
@@ -791,7 +875,14 @@ function CanvasHandler(canvasID) {
                 stroke: "white",
                 strokeDashArray: [5, 5],
                 strokeWidth: 2,
-                fill: 'rgba(0,0,0,0)'
+                fill: 'rgba(0,0,0,0)',
+                transparentCorners: false,
+                cornerColor: 'white',
+                cornerStrokeColor: 'black',
+                borderColor: 'black',
+                cornerSize: 10,
+                cornerStyle: 'circle',
+                borderDashArray: [3, 3]
             });
             this.canvas.add(this.newRect);
         } else if (this.currentTool === this.MOVE_RECT_TOOL) {

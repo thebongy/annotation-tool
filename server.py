@@ -43,7 +43,9 @@ def close_connection(exception):
 
 @app.route("/")
 def home_page():
-    return render_template("index.html", page="home")
+    db = get_db()
+    projects = db.get_projects()
+    return render_template("index.html", page="home", projects=projects)
 
 @app.route("/new")
 def create_new_project():

@@ -14,6 +14,8 @@
         {% if page == "annotate" %}
         <h5 class="ml-auto">Project: {{ project.name }}</h4>
         <button class="btn btn-success btn-sm ml-2 mb-1" id="saveDataBtn">Save Work</button>
+        <input type="file" id="importDataForm" style="display: none;" />
+        <button class="btn btn-primary btn-sm ml-2 mb-1" id="importDataBtn">Import JSON</button>
         <button class="btn btn-primary btn-sm ml-2 mb-1" id="exportDataBtn">Export Data</button>
         {% endif %}
     </div>

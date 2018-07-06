@@ -19,8 +19,9 @@
                   Hide Objects when not in view
                 </label>
               </div>
-          <div class="list-group object-list">
+          <div class="list-group object-list mt-2">
           </div>
+          <button type="button" class="btn btn-success mt-3" id="newNameOptionBtn">New Annotation Type</button>
         </div>
         <div class="tab-pane active" id="files" role="tabpanel">
             <ul class="file-list list-group list-group-flush mb-5">
@@ -62,16 +63,7 @@
       <div class="modal-body">
         Select a name for the annotation out of the list below, or add a new name for this annotation:
         <div id="nameOptions" data-options="{{ project.annotationTypes }}">
-          {% for name in project.annotationTypes.split(",") %}
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="nameOption" id="nameOption{{loop.index}}" value="{{name}}">
-            <label class="form-check-label" for="nameOption{{loop.index}}">
-              {{ name }}
-            </label>
-          </div>
-          {% endfor %}
         </div>
-        <button type="button" class="btn btn-success" id="newNameOptionBtn">New Annotation Type</button>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>

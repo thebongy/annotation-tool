@@ -18,11 +18,22 @@ class Database:
         self.dbExec("INSERT INTO PROJECTS VALUES (?,?,?)", (projectID, projectName, ANNOTATION_TYPES))
         return projectID
 
-    def dbExec(self, query, args=None):
+    def dbExec(self, query, args=()):
         out = self.cursor.execute(query, args).fetchall()
         self.db.commit()
         return out
 
+    def get_projects(self):
+        projectsData = self.dbExec("SELECT * FROM PROJECTS")
+        projects = [];
+
+        for project in projectsData:
+            projects.append({
+                "id": project[0],
+                "name": project[1]
+            });
+        return projects
+        
     def get_project_by_ID(self, ID):
         project = self.dbExec("SELECT * FROM PROJECTS WHERE ID=?", (ID,))[0]
         if (project is None):
