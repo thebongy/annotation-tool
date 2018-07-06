@@ -13,6 +13,12 @@
     <div class="card-body">
       <div class="tab-content">
         <div class="tab-pane" id="objects" role="tabpanel">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="hideObjectsCheck" checked>
+                <label class="form-check-label" for="hideObjectsCheck">
+                  Hide Objects when not in view
+                </label>
+              </div>
           <div class="list-group object-list">
           </div>
         </div>
@@ -55,7 +61,7 @@
       </div>
       <div class="modal-body">
         Select a name for the annotation out of the list below, or add a new name for this annotation:
-        <div id="nameOptions" data-options="{ {project.annotationTypes }}">
+        <div id="nameOptions" data-options="{{ project.annotationTypes }}">
           {% for name in project.annotationTypes.split(",") %}
           <div class="form-check">
             <input class="form-check-input" type="radio" name="nameOption" id="nameOption{{loop.index}}" value="{{name}}">
