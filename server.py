@@ -63,7 +63,23 @@ def annotater_page(projectID):
     db = get_db()
     project = db.get_project_by_ID(projectID)
     
-    return render_template("annotate.html", project=project, page="annotate")
+    return render_template("annotate.html", project=project, page="annotate", dataFolder = DATA_FOLDER)
+
+@app.route("/project/<projectID>/delete")
+def delete_project(projectID):
+    db = get_db()
+    db.delete_project(projectID)
+    return redirect("/")
+
+@app.route("/project/<projectID>/add")
+def add_file(projectID):
+    db = get_db()
+    fileName = request.args.get("file")
+    if (os.path.exists(os.path.join(DATA_FOLDER, fileName))):
+        print("FILE", fileName, "found")
+        return jsonify(db.add_file_to_project(fileName, projectID))
+    else:
+        return "Not Found"
 
 @app.route("/project/<projectID>/upload", methods=["POST"])
 def upload_file(projectID):

@@ -49,7 +49,6 @@ function Group(name, container) {
 
     this.nameElem = this.groupElem.find(".group-list-name");
     this.objectsContainer = this.groupElem.find(".card-body");
-
     container.append(this.groupElem);
 
     this.newObject = function(listElem) {
@@ -77,6 +76,14 @@ function Group(name, container) {
                 break;
             }
         }
+    }
+
+    this.open = function() {
+        console.log(this.groupElem);
+        $(`#collapse${this.ID}`).collapse("show");
+    }
+    this.close = function() {
+        $(`#collapse${this.ID}`).collapse("hide");
     }
 
     this.viewUpdate = function(hideObjects) {
@@ -349,14 +356,24 @@ function ObjectList() {
 
     this.selectObject = function (ID) {
         const obj = this.objects[ID];
-        const listElem = obj.listElem;
 
         if (this.currentSelected != null) {
             this.currentSelected.unselect();
         }
 
-        listElem.select();
-        this.currentSelected = listElem;
+        obj.select();
+        this.currentSelected = obj;
+    }
+
+    this.selectGroup = function (obj) {
+        console.log("ran");
+        for (const group in this.groups) {
+            if (this.groups[group].name === obj.name) {
+                this.groups[group].open();
+            } else {
+                this.groups[group].close();
+            }
+        }
     }
 
     this.makeActiveSelection = function (obj) {
@@ -366,7 +383,9 @@ function ObjectList() {
     }
 
     this.unselectAll = function () {
-        this.currentSelected.unselect();
+        if (this.currentSelected) {
+            this.currentSelected.unselect();
+        }
         this.currentSelected = null;
     }
 
@@ -401,6 +420,7 @@ function ObjectList() {
     this.exportData = function () {
         let frames = {};
 
+        const self = this;
         function addFrameAnnotation(data, startFrame, endFrame) {
             if (startFrame != null && data.frame < startFrame) {
                 return false;
@@ -409,6 +429,11 @@ function ObjectList() {
             if (endFrame != null && data.frame > endFrame) {
                 return false;
             }
+
+            data.t *= self.canvasHandler.scaleY;
+            data.l *= self.canvasHandler.scaleX;
+            data.b *= self.canvasHandler.scaleY;
+            data.r *= self.canvasHandler.scaleX;
 
             if (frames[data.frame] === undefined) {
                 frames[data.frame] = [data];
@@ -537,6 +562,10 @@ function ObjectList() {
         this.saveOptionBtn.attr("data-id", ID);
         this.nameOptionsModal.modal("show");
     }
+
+    this.addTextElem = function (rect) {
+        this.canvasHandler.canvas.add(rect);
+    }
 }
 
 function ObjectHandler() {
@@ -575,6 +604,21 @@ function ObjectHandler() {
         this.objectList = objectList;
 
         this.listElem.init(this);
+
+        const top = this.rect.get("top");
+        const left = this.rect.get("left");
+        
+        this.textElem = new fabric.Text(this.name,
+            {
+                textBackgroundColor: "white",
+                fontSize:20,
+                fill: "white",
+                top: top-22,
+                left: left,
+                selectable: false
+            });
+
+        this.objectList.addTextElem(this.textElem);                
     }
 
     this.serialize = function () {
@@ -586,6 +630,17 @@ function ObjectHandler() {
             endFrame: this.endFrame
         }
         return data;
+    }
+
+    this.select = function () {
+        this.listElem.select();
+        this.objectList.selectGroup(this);
+        this.textElem.set({ visible: false });
+    } 
+
+    this.unselect = function () {
+        this.listElem.unselect();
+        this.textElem.set({ visible: true });
     }
 
     this.makeActiveSelection = function () {
@@ -627,6 +682,10 @@ function ObjectHandler() {
         this.rect.setCoords();
     }
 
+    this.modified = function (position) {
+        this.drawText(position);
+    }
+
     this.drawRect = function (position) {
         const top = position.t;
         const left = position.l;
@@ -640,17 +699,29 @@ function ObjectHandler() {
             scaleX: 1,
             scaleY: 1
         });
+        this.drawText(position);
+    }
 
+    this.drawText = function (position) {
+        this.textElem.set({
+            top: position.t-22,
+            left: position.l
+        });
     }
 
     this.setColor = function (color) {
         this.rect.set({stroke: color});
+        this.textElem.set({textBackgroundColor: color});
     }
 
     this.hide = function () {
         this.rect.set({
             visible: false
         });
+        this.textElem.set({
+            visible: false
+        });
+
         this.hidden = true;
     }
 
@@ -658,6 +729,10 @@ function ObjectHandler() {
         this.rect.set({
             visible: true
         });
+        this.textElem.set({
+            visible: true
+        });
+
         this.hidden = false;
     }
 
@@ -705,6 +780,8 @@ function ObjectHandler() {
         this.name = name;
         this.count = null;
         this.objectList.changeObjGroup(this.ID, oldName, name);
+
+        this.textElem.set({text: name});
         // No need to update listElem as count isn't known.
     }
 
@@ -839,10 +916,17 @@ function CanvasHandler(canvasID) {
         })
     }
 
-    this.loadFile = function (width, height, fileID, cb) {
+    this.loadFile = function (width, height, fileID, scaleX, scaleY, cb) {
         this.canvasContainer
             .width(width)
             .height(height);
+        this.canvas.setWidth(width);
+        this.canvas.setHeight(height);
+
+        console.log(scaleX, scaleY);
+
+        this.scaleX = scaleX;
+        this.scaleY = scaleY;
         this.objectList.loadFile(fileID, cb);
 
     }
@@ -879,7 +963,7 @@ function CanvasHandler(canvasID) {
                 transparentCorners: false,
                 cornerColor: 'white',
                 cornerStrokeColor: 'black',
-                borderColor: 'black',
+                borderColor: 'white',
                 cornerSize: 10,
                 cornerStyle: 'circle',
                 borderDashArray: [3, 3]
@@ -887,7 +971,10 @@ function CanvasHandler(canvasID) {
             this.canvas.add(this.newRect);
         } else if (this.currentTool === this.MOVE_RECT_TOOL) {
             if (event.target) {
-                this.objectList.selectObject(event.target.get("OBJ_ID"));
+                const ID = event.target.get("OBJ_ID");
+                if (ID != undefined) {
+                    this.objectList.selectObject(ID);
+                }
             } else {
                 this.objectList.unselectAll();
             }
@@ -1017,10 +1104,12 @@ function CanvasHandler(canvasID) {
         });
         rect.setCoords();
         obj.setFramePosition(this.currentFrame, position);
+        obj.modified(position);
     }
 
     this.deleteObj = function (obj) {
         this.canvas.remove(obj.rect);
+        this.canvas.remove(obj.textElem);
     }
 
     this.objectScaled = function (event) {

@@ -62,17 +62,29 @@ function ViewHandler(imageView, videoView) {
 
             this.video.listen("frame");
             this.currentView = this.videoView;
+
+            realWidth = this.videoView[0].videoWidth;
+            realHeight = this.videoView[0].videoHeight;
         } else if (this.type = "image") {
             this.currentView = this.imageView;
+            realWidth = this.imageView[0].naturalWidth;
+            realHeight = this.imageView[0].naturalHeight;
         }
         
-        this.canvas.loadFile(this.currentView.width(), this.currentView.height(), fileID, function () {
-          if (self.type === "video") {
-            self.seekVideo(1);
-          }
-          self.fileNameElem.text(originalFileName);
-          self.currentView.show();
-        });
+        const scaleX = realWidth/(this.currentView.width());
+        const scaleY = realHeight/(this.currentView.height());
+        this.canvas.loadFile(this.currentView.width(),
+                            this.currentView.height(),
+                            fileID,
+                            scaleX,
+                            scaleY,
+                            function () {
+                                if (self.type === "video") {
+                                  self.seekVideo(1);
+                                }
+                                self.fileNameElem.text(originalFileName);
+                                self.currentView.show();
+                              });
     }
     
     this.drawCurrentFrame = function () {

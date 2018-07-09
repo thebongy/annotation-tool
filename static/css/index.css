@@ -78,8 +78,10 @@ html, body {
   left: 0;
   right:0;
   bottom:0;
-  margin:auto;
-  width: 640px;
+  margin-top:auto;
+  margin-bottom:auto;
+  margin-left:200px;
+  width: 800px;
 }
 
 .main-frame img, .main-frame video {
@@ -155,7 +157,14 @@ html, body {
   bottom:0;
   padding:0;
   max-width:300px;
+  max-height:;
 }
+
+#options-window .card-body {
+  max-height: 450px;
+  overflow-y: auto;
+}
+
 .toolbar-sticky {
   position: relative;
   top: 0;

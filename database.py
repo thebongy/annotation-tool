@@ -17,6 +17,12 @@ class Database:
         print("Creating project", projectID)
         self.dbExec("INSERT INTO PROJECTS VALUES (?,?,?)", (projectID, projectName, ANNOTATION_TYPES))
         return projectID
+    def delete_project(self, ID):
+        files = self.get_project_files(ID)
+        for file in files:
+            self.delete_file(file["id"])
+        self.dbExec("DELETE FROM PROJECTS WHERE ID=?", (ID,))
+        return True
 
     def dbExec(self, query, args=()):
         out = self.cursor.execute(query, args).fetchall()
@@ -56,7 +62,10 @@ class Database:
                 })
         return files
     def add_file_to_project(self, file, projectID):
-        fileName = file.filename
+        if isinstance(file, str):
+            fileName = file
+        else:
+            fileName = file.filename
         ext = fileName[fileName.find("."):]
         print(fileName, "with ext", ext)
 
@@ -73,7 +82,11 @@ class Database:
         new_file_name = fileID + ext
         new_file_path = os.path.join(DATA_FOLDER, new_file_name)
         print("saving", fileName, "to", new_file_path)
-        file.save(new_file_path)
+
+        if isinstance(file, str):
+            os.rename(os.path.join(DATA_FOLDER, file), new_file_path)
+        else:
+            file.save(new_file_path)
 
         self.dbExec("INSERT INTO FILES VALUES (?,?,?,?,?)", (new_file_name, projectID, file_type, fileName, "{}"))
         return {"original": fileName, "id":new_file_name, "type": file_type}
@@ -89,4 +102,7 @@ class Database:
 
     def delete_file(self, fileID):
         self.dbExec("DELETE FROM FILES WHERE ID=?", (fileID,))
-        os.remove(os.path.join("data", fileID))
+        try:
+            os.remove(os.path.join(DATA_FOLDER, fileID))
+        except:
+            print("Failed to delete", fileID)

@@ -39,18 +39,40 @@
               </li>
               {% endfor %}
             </ul>
-            <form id="uploadFileForm" action="/project/{{ project.id }}/upload">
-              <label class="btn btn-success">
-              Add file <input name="file" id="addFileBtn" type="file" hidden>
-              </label>
-            </form>
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addFileModal">
+              Add file
+            </button>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Modal -->
+<!-- Modals -->
+<div class="modal fade" id="addFileModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Upload file</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Use the 'upload file' button below to upload a file to the server, which is to be added to the project.</p>
+        <p>For bigger files, transfer the file to <b>{{ dataFolder }}</b>, and use the same button to select the copied file. (The server will always try to detect first if a file with the same name exists) </p>
+      </div>
+      <div class="modal-footer">
+        <form id="uploadFileForm" data-add="/project/{{ project.id }}/add" data-upload="/project/{{ project.id }}/upload">
+              <label class="btn btn-success">
+              Upload file <input name="file" id="addFileBtn" type="file" hidden>
+              </label>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="nameOptionsModal" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
